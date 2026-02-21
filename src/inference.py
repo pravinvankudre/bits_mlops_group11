@@ -1,6 +1,8 @@
 import io
 import time
 import logging
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -11,6 +13,8 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from PIL import Image
 from prometheus_client import Counter, Histogram, generate_latest
 from fastapi.responses import Response
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.model import get_model
 from src.data_preprocessing import get_transforms
@@ -42,6 +46,9 @@ def load_model():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
     
+    # Load transform first
+    transform = get_transforms(augment=False)
+    
     # Load classes
     classes_path = Path("models/classes.txt")
     if classes_path.exists():
@@ -62,13 +69,11 @@ def load_model():
     
     model.to(device)
     model.eval()
-    
-    # Load transform
-    transform = get_transforms(augment=False)
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize model on startup."""
+    global transform
     load_model()
     logger.info("Application startup complete")
 
